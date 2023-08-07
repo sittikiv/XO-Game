@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Eggy Chess - Play against Bot</title>
+    <style>
+        body {
+            background-color: burlywood;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 20px auto;
+        }
+        td {
+            width: 50px;
+            height: 50px;
+            border: 1px solid black;
+            text-align: center;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .black-egg-large {
+            color: black;
+        }
+        .black-egg-medium {
+            color: black;
+            font-size: 18px;
+        }
+        .black-egg-small {
+            color: black;
+            font-size: 14px;
+        }
+        .white-egg-large {
+            color: white;
+        }
+        .white-egg-medium {
+            color: white;
+            font-size: 18px;
+        }
+        .white-egg-small {
+            color: white;
+            font-size: 14px;
+        }
+        #egg-count {
+            margin-top: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+        #player-turn {
+            font-weight: bold;
+            font-size: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Eggy Chess - Play against Bot</h1>
+    <table>
+        <tr>
+            <td id="cell-1"></td>
+            <td id="cell-2"></td>
+            <td id="cell-3"></td>
+        </tr>
+        <tr>
+            <td id="cell-4"></td>
+            <td id="cell-5"></td>
+            <td id="cell-6"></td>
+        </tr>
+        <tr>
+            <td id="cell-7"></td>
+            <td id="cell-8"></td>
+            <td id="cell-9"></td>
+        </tr>
+    </table>
+
+    <div>
+        <input type="radio" name="size" value="large"> Large
+        <input type="radio" name="size" value="medium" checked> Medium
+        <input type="radio" name="size" value="small"> Small
+    </div>
+
+    <div id="egg-count">
+        Black Eggs: Large (BL): 2, Medium (BM): 3, Small (BS): 3<br>
+        White Eggs: Large (WL): 2, Medium (WM): 3, Small (WS): 3
+    </div>
+
+    <div id="player-turn">
+        Player Turn: Black
+    </div>
+    <button id="autoBot">Auto Bot</button>
+
+    <script>
+        const eggShells = {
+            black: {
+                large: 'BL',
+                medium: 'BM',
+                small: 'BS'
+            },
+            white: {
+                large: 'WL',
+                medium: 'WM',
+                small: 'WS'
+            }
+        };
+
+        const startingEggCounts = {
+            black: {
+                large: 2,
+                medium: 3,
+                small: 3
+            },
+            white: {
+                large: 2,
+                medium: 3,
+                small: 3
+            }
+        };
+
+        let currentPlayer = 'black'; // 'black' or 'white'
+        const cells = document.querySelectorAll('td');
+        const sizeRadioButtons = document.querySelectorAll('input[name="size"]');
+        const eggCountDiv = document.getElementById('egg-count');
+        const playerTurnDiv = document.getElementById('player-turn');
+        document.getElementById('autoBot').addEventListener('click', botMakeMove)
+        function getClassName(className) {
+            return className.split('-')[0];
+        }
+
+        function checkWinner() {
+            const lines = [
+                // Rows
+                [1, 2, 3],
+                [4, 5, 6],
+                [7, 8, 9],
+                // Columns
+                [1, 4, 7],
+                [2, 5, 8],
+                [3, 6, 9],
+                // Diagonals
+                [1, 5, 9],
+                [3, 5, 7]
+            ];
+
+            for (const line of lines) {
+                const [a, b, c] = line;
+                const cellA = document.getElementById(`cell-${a}`);
+                const cellB = document.getElementById(`cell-${b}`);
+                const cellC = document.getElementById(`cell-${c}`);
+
+                if (
+                    getClassName(cellA.className) === getClassName(cellB.className) &&
+                    getClassName(cellB.className) === getClassName(cellC.className) &&
+                    cellA.className !== ''
+                ) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function checkDraw() {
+            for (const cell of cells) {
+                if (cell.innerText === '') {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+            playerTurnDiv.innerText = `Player Turn: ${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}`;
+        }
+
+        function canReplaceEggShell(cell, size) {
+        //   console.log('canReplaceEggShell', cell, size)
+            const cellClass = cell.className;
+            if (cellClass === '') {
+                return true;
+            }
+
+            const cellPlayer = cellClass.includes('black') ? 'black' : 'white';
+            const cellSize = cellClass.includes('large') ? 'large' : cellClass.includes('medium') ? 'medium' : 'small';
+
+            if (currentPlayer === cellPlayer) {
+                // If the cell contains an Egg Shell of the same player, then we can't replace it
+                return false;
+            }
+
+            const sizeOrder = ['small', 'medium', 'large'];
+            const currentPlayerSize = sizeOrder.indexOf(size);
+            const cellPlayerSize = sizeOrder.indexOf(cellSize);
+            return currentPlayerSize > cellPlayerSize;
+        }
+
+        
+        function canReplaceEggShellBot(cell, size, player) {
+            if (cell === '') {
+                return true;
+            }
+            const cellPlayer = cell[0] === 'B' ? 'black' : 'white';
+            const cellSize = cell[1] === 'L' ? 'large' : cell[1] === 'M' ? 'medium' : 'small';
+
+            if (player === cellPlayer) {
+                // If the cell contains an Egg Shell of the same player, then we can't replace it
+                return false;
+            }
+
+            const sizeOrder = ['small', 'medium', 'large'];
+            const currentPlayerSize = sizeOrder.indexOf(size);
+            const cellPlayerSize = sizeOrder.indexOf(cellSize);
+            return currentPlayerSize > cellPlayerSize;
+        }
+
+        function getAvailableMoves(board, player) {
+            const availableMoves = [];
+            const EggCounts = {
+              black: {
+                large: 2 - board.filter(e => e === 'BL').length,
+                medium: 3 - board.filter(e => e === 'BM').length,
+                small: 3 - board.filter(e => e === 'BS').length,
+              },
+              white: {
+                large: 2 - board.filter(e => e === 'WL').length,
+                medium: 3 - board.filter(e => e === 'WM').length,
+                small: 3 - board.filter(e => e === 'WS').length,
+              }
+            }
+            for (let i = 0; i < board.length; i++) {
+              // console.log('board[i]',[i], board[i], player)
+                    const cell = i + 1;
+                    for (const size of [ 'medium', 'small', 'large']) {
+
+                      // console.log('startingEggCounts[player][size]', player, size, startingEggCounts[player][size])
+                        if (EggCounts[player][size] > 0 && canReplaceEggShellBot(board[i], size, player)) {
+                            availableMoves.push({ cell, size });
+                        }
+                    }
+
+            }
+            return availableMoves;
+        }
+        function evaluateBoard(board, player) {
+            // Define weights for different egg sizes (you can adjust these weights based on your strategy)
+            const weights = {
+                large: 2,
+                medium: 3,
+                small: 1
+            };
+
+            let score = 0;
+
+            // Loop through each cell on the board
+            for (let i = 0; i < board.length; i++) {
+                const cell = board[i];
+
+                if (cell !== '') {
+                    const cellPlayer = cell[0] === 'B' ? 'black' : 'white';
+                    const cellSize = cell[1] === 'L' ? 'large' : cell[1] === 'M' ? 'medium' : 'small';
+                    if (cellPlayer === player) {
+                        score += weights[cellSize];
+                    } else {
+                        score -= weights[cellSize];
+                    }
+                }
+            }
+
+            return score;
+        }
+
+        
+
+        function checkCountBot(cells) {
+          let blackEggCount = 0;
+          let whiteEggCount = 0;
+
+          for (const cell of cells) {
+              if (cell !== '') {
+                  if (cell.includes('B')) {
+                      blackEggCount++;
+                  } else if (cell.includes('W')) {
+                      whiteEggCount++;
+                  }
+              }
+          }
+          if (blackEggCount > whiteEggCount) {
+              return 'B'
+          } else if (blackEggCount < whiteEggCount) {
+              return 'W'
+          } else {
+              return ''
+          }
+        }
+
+        function checkDrawBot(cells) {
+            for (const cell of cells) {
+                if (cell === '') {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+
+        function checkWinnerBot(board, player) {
+            
+            const lines = [
+                // Rows
+                [1, 2, 3],
+                [4, 5, 6],
+                [7, 8, 9],
+                // Columns
+                [1, 4, 7],
+                [2, 5, 8],
+                [3, 6, 9],
+                // Diagonals
+                [1, 5, 9],
+                [3, 5, 7]
+            ];
+
+            for (const line of lines) {
+                const [a, b, c] = line;
+                const cellA = board[a -1]?.[0];
+                const cellB = board[b -1]?.[0];
+                const cellC = board[c -1]?.[0];
+
+
+                if (
+                    cellA === cellB &&
+                    cellB === cellC &&
+                    cellA !== '' && cellA === player && cellB === player && cellC === player
+                ) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        function minimax(board, player, depth, alpha, beta, maximizingPlayer) {
+            if ((checkWinnerBot(board, 'W'))) {
+                return { score: evaluateBoard(board, 'white') };
+            }
+            if ((checkWinnerBot(board, 'B'))) {
+                return { score: evaluateBoard(board, 'white') };
+            }
+            if (maximizingPlayer) {
+                let bestScore = -Infinity;
+                let bestMove = null;
+                for (const move of getAvailableMoves(board, 'white')) {
+                    const { cell, size } = move;
+                    const type = size[0].toLocaleUpperCase()
+                    const newBoard = board.slice();
+                    newBoard[cell - 1] = 'W'+type
+                    const score = minimax(newBoard, 'white', depth + 1, alpha, beta, false).score;
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = move;
+                    }
+                    alpha = Math.max(alpha, bestScore);
+                    if (beta <= alpha) {
+                        break;
+                    }
+                }
+
+                return { score: bestScore, move: bestMove, board: board };
+            } else {
+                let bestScore = Infinity;
+                let bestMove = null;
+
+                // console.log('not maximizingPlayer')
+                for (const move of getAvailableMoves(board, 'black')) {
+                    const { cell, size } = move;
+                    const type = size[0].toLocaleUpperCase()
+                    const newBoard = board.slice();
+                    newBoard[cell - 1] = 'B'+type;
+                    
+                    // bestMove = move;
+                    const score = minimax(newBoard, 'black', depth + 1, alpha, beta, true).score;
+
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestMove = move;
+                    }
+
+                    beta = Math.min(beta, bestScore);
+                    if (beta <= alpha) {
+                        break;
+                    }
+                }
+                // console.log(board)
+                // console.log({ score: bestScore, move: bestMove })
+                return { score: bestScore, move: bestMove, board: board };
+            }
+            // return { score: scores.tie};
+        }
+
+        function botMakeMove() {
+            
+            let bestScore = -Infinity;
+            let bestMove;
+            const currentBoard = Array.from(cells, cell => cell.innerText)
+            console.log(currentBoard)
+            const miniName = currentPlayer === 'black' ? 'B' : 'W'
+            for (const move of getAvailableMoves(currentBoard, currentPlayer)) {
+                    const { cell, size } = move;
+                    console.log(cell, size);
+                    const type = size[0].toLocaleUpperCase()
+                    const newBoard = currentBoard.slice();
+                    newBoard[cell - 1] = miniName+type
+                    const findminimax = minimax(newBoard, currentPlayer, 0, -Infinity, +Infinity, false);
+                    console.log(findminimax)
+                    if (findminimax.score > bestScore) {
+                        bestScore = findminimax.score;
+                        bestMove = move;
+                    }
+                }
+            
+            if (bestMove) {
+                placeEggShell(document.getElementById(`cell-${bestMove.cell}`), bestMove.size);
+            }
+        }
+
+        function handleClick(event) {
+            const cell = event.target;
+            const selectedSize = document.querySelector('input[name="size"]:checked').value;
+            placeEggShell(cell, selectedSize);
+            // setTimeout(() => {
+            //     botMakeMove();
+            // }, 100)
+        }
+
+        function placeEggShell(cell, size) {
+            if (cell.innerText === '' || canReplaceEggShell(cell, size)) {
+                const eggShellType = eggShells[currentPlayer];
+                const eggCounts = startingEggCounts[currentPlayer];
+                const startingPlayer = startingEggCounts['black']
+                const eggTotal = startingPlayer.large + startingPlayer.medium + startingPlayer.small
+
+                if (size === 'large') {
+                    if (cell.id === 'cell-5' && eggTotal === 8) {
+                        alert('Large Egg Shells are not allowed in the center at the beginning!');
+                        return;
+                    }
+                    if (eggCounts.large === 0) {
+                        alert('You have used all your Large Egg Shells!');
+                        return;
+                    }
+                    cell.className = `${currentPlayer}-egg-large`;
+                    cell.innerText = eggShellType.large;
+                    eggCounts.large--;
+                } else if (size === 'medium') {
+                    if (eggCounts.medium === 0) {
+                        alert('You have used all your Medium Egg Shells!');
+                        return;
+                    }
+                    cell.className = `${currentPlayer}-egg-medium`;
+                    cell.innerText = eggShellType.medium;
+                    eggCounts.medium--;
+                } else if (size === 'small') {
+                    if (eggCounts.small === 0) {
+                        alert('You have used all your Small Egg Shells!');
+                        return;
+                    }
+                    cell.className = `${currentPlayer}-egg-small`;
+                    cell.innerText = eggShellType.small;
+                    eggCounts.small--;
+                }
+
+                updateEggCount();
+
+                if (checkWinner()) {
+                    alert(`${currentPlayer.toUpperCase()} wins!`);
+                    location.reload();
+                } else if (checkDraw()) {
+                  checkCount()
+                } else {
+                    switchPlayer();
+                }
+            }
+        }
+        function checkCount() {
+          let blackEggCount = 0;
+          let whiteEggCount = 0;
+
+          for (const cell of cells) {
+              if (cell.innerText !== '') {
+                  if (cell.className.includes('black')) {
+                      blackEggCount++;
+                  } else if (cell.className.includes('white')) {
+                      whiteEggCount++;
+                  }
+              }
+          }
+          if (blackEggCount > whiteEggCount) {
+              alert('Black wins! (More Egg Shells on the board)');
+          } else if (blackEggCount < whiteEggCount) {
+              alert('White wins! (More Egg Shells on the board)');
+          } else {
+              alert("It's a draw! (Equal number of Egg Shells)");
+          }
+          location.reload();
+        }
+        
+        function updateEggCount() {
+            const blackEggCounts = startingEggCounts.black;
+            const whiteEggCounts = startingEggCounts.white;
+            const eggCountText = `
+                Black Eggs: Large (BL): ${blackEggCounts.large}, Medium (BM): ${blackEggCounts.medium}, Small (BS): ${blackEggCounts.small}<br>
+                White Eggs: Large (WL): ${whiteEggCounts.large}, Medium (WM): ${whiteEggCounts.medium}, Small (WS): ${whiteEggCounts.small}
+            `;
+            eggCountDiv.innerHTML = eggCountText;
+        }
+
+        // Add event listener to handle player moves
+        cells.forEach(cell => cell.addEventListener('click', handleClick));
+        updateEggCount();
+    </script>
+</body>
+</html>
